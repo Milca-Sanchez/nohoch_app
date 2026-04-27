@@ -1,0 +1,26 @@
+# Credenciales de Prueba - Nohoch Web App
+
+A continuación se listan los usuarios disponibles en el sistema simulado (Mock) y sus respectivos roles:
+
+========================================
+1. Perfil Administrador (Acceso Completo)
+========================================
+Usuario:    admin@nohoch.com
+Contraseña: 123456
+Vistas:     Dashboard, Inventario, Tesorería
+
+========================================
+2. Perfil Tesorero (Acceso a Finanzas)
+========================================
+Usuario:    tesorero@nohoch.com
+Contraseña: 123456
+Vistas:     Tesorería
+
+========================================
+3. Perfil Gestor de Materiales (Acceso a Inventario)
+========================================
+Usuario:    materiales@nohoch.com
+Contraseña: 123456
+Vistas:     Inventario
+
+*Nota: Cualquier otra combinación de correo arrojará un error de usuario no encontrado, y cualquier otra contraseña arrojará un error de contraseña incorrecta.*

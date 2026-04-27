@@ -1,0 +1,84 @@
+import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
+import '../models/treasury_record.dart';
+import '../models/financial_history.dart';
+import '../services/mock_database_service.dart';
+
+class TreasuryProvider with ChangeNotifier {
+  final MockDatabaseService _dbService;
+  List<TreasuryRecord> _records = [];
+  bool _isLoading = false;
+
+  TreasuryProvider(this._dbService) {
+    _loadRecords();
+  }
+
+  List<TreasuryRecord> get records => _records;
+  List<TreasuryRecord> get incomes => _records.where((r) => r.isIncome).toList();
+  List<TreasuryRecord> get expenses => _records.where((r) => !r.isIncome).toList();
+  
+  bool get isLoading => _isLoading;
+
+  double get balance {
+    return _records.fold(0, (sum, record) => sum + (record.isIncome ? record.amount : -record.amount));
+  }
+
+  double get totalIncome {
+    return incomes.fold(0, (sum, r) => sum + r.amount);
+  }
+
+  double get totalExpenses {
+    return expenses.fold(0, (sum, r) => sum + r.amount);
+  }
+
+  Future<void> _loadRecords() async {
+    _isLoading = true;
+    notifyListeners();
+    
+    _records = await _dbService.getTreasuryRecords();
+    
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> addRecord(TreasuryRecord record, String userName) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    await _dbService.addTreasuryRecord(record);
+    
+    // Registrar historial
+    final history = FinancialHistory(
+      id: const Uuid().v4(),
+      recordId: record.id,
+      date: DateTime.now(),
+      action: record.isIncome ? 'Ingreso registrado' : 'Egreso registrado',
+      responsible: userName,
+      details: 'Monto: \$${record.amount} - Concepto: ${record.concept}',
+    );
+    await _dbService.addFinancialHistory(history);
+    
+    await _loadRecords();
+  }
+
+  Future<void> deleteRecord(String recordId, String userName) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    final record = _records.firstWhere((r) => r.id == recordId);
+    await _dbService.deleteTreasuryRecord(recordId);
+
+    // Registrar historial
+    final history = FinancialHistory(
+      id: const Uuid().v4(),
+      recordId: recordId,
+      date: DateTime.now(),
+      action: record.isIncome ? 'Ingreso eliminado' : 'Egreso eliminado',
+      responsible: userName,
+      details: 'Monto: \$${record.amount} - Concepto: ${record.concept}',
+    );
+    await _dbService.addFinancialHistory(history);
+    
+    await _loadRecords();
+  }
+}
