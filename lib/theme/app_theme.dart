@@ -32,4 +32,36 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData get darkTheme {
+    final colorScheme = ColorScheme.fromSeed(
+      brightness: Brightness.dark,
+      seedColor: const Color(0xFFB5C0D0),
+      primary: const Color(0xFF8E9AAF),
+      secondary: const Color(0xFFCBC0D3),
+      tertiary: const Color(0xFFEFD3D7),
+      surface: const Color(0xFF1E1E2C),
+      background: const Color(0xFF12121A),
+    );
+
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: colorScheme.background,
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+      appBarTheme: AppBarTheme(
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
+        elevation: 0,
+        centerTitle: true,
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: colorScheme.surface,
+        selectedIconTheme: IconThemeData(color: colorScheme.primary),
+        unselectedIconTheme: IconThemeData(color: colorScheme.onSurface.withOpacity(0.6)),
+        selectedLabelTextStyle: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.bold),
+        unselectedLabelTextStyle: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+      ),
+    );
+  }
 }
