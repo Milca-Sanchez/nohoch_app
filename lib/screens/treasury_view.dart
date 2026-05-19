@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
 import '../providers/treasury_provider.dart';
+import '../services/export_service.dart';
 import 'incomes_screen.dart';
 import 'expenses_screen.dart';
 
@@ -24,12 +25,51 @@ class TreasuryView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Dashboard Financiero',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Dashboard Financiero',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          FilledButton.icon(
+                            onPressed: () async {
+                              final exportService = ExportService();
+                              await exportService.exportToPdf(
+                                records: treasury.records,
+                                totalIncome: treasury.totalIncome,
+                                totalExpenses: treasury.totalExpenses,
+                                balance: treasury.balance,
+                              );
+                            },
+                            icon: const Icon(Icons.picture_as_pdf, size: 18),
+                            label: const Text('Exportar PDF'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.redAccent.shade700,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          FilledButton.icon(
+                            onPressed: () async {
+                              final exportService = ExportService();
+                              await exportService.exportToCsv(records: treasury.records);
+                            },
+                            icon: const Icon(Icons.table_chart, size: 18),
+                            label: const Text('Exportar CSV'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.green.shade700,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   Row(
