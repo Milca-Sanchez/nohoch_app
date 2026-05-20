@@ -6,6 +6,7 @@ import '../providers/inventory_provider.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_category.dart';
 import 'item_detail_screen.dart';
+import 'add_inventory_item_screen.dart';
 
 class InventoryView extends StatefulWidget {
   const InventoryView({super.key});
@@ -27,9 +28,18 @@ class _InventoryViewState extends State<InventoryView> {
     }
 
     // Filtrar items
-    final displayedItems = _selectedCategoryId == 'all'
-        ? inventory.items
+    var displayedItems = _selectedCategoryId == 'all'
+        ? inventory.items.toList()
         : inventory.items.where((i) => i.categoryId == _selectedCategoryId).toList();
+
+    // Ordenar automáticamente: Bajo stock (< 5) al inicio
+    displayedItems.sort((a, b) {
+      final aLow = a.quantity < 5;
+      final bLow = b.quantity < 5;
+      if (aLow && !bLow) return -1;
+      if (!aLow && bLow) return 1;
+      return a.name.compareTo(b.name);
+    });
 
     return Scaffold(
       body: Padding(
@@ -125,7 +135,7 @@ class _InventoryViewState extends State<InventoryView> {
   Widget _buildItemCard(BuildContext context, InventoryItem item, InventoryCategory category) {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('dd/MM/yyyy');
-    final isLowStock = item.quantity < category.lowStockThreshold;
+    final isLowStock = item.quantity < 5;
 
     return InkWell(
       onTap: () {
@@ -225,8 +235,9 @@ class _InventoryViewState extends State<InventoryView> {
   }
 
   void _showAddItemDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Función para añadir en desarrollo')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddInventoryItemScreen()),
     );
   }
 }

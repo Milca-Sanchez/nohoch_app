@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 image: AssetImage('assets/images/background.jpg'),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.black45, // Adds a slight dark tint for better contrast
+                  Colors.black54, // Adds a slight dark tint for better contrast
                   BlendMode.darken,
                 ),
               ),
@@ -55,37 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
           SafeArea(
             child: Column(
               children: [
-                // Top Header Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Nohoch',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      // Mock Logo (like the "A" in the design)
-                      const Icon(Icons.church, color: Colors.white, size: 36),
-                      Row(
-                        children: [
-                          Text(
-                            'Comunidad', // Changed from Reallygreatsite
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.menu, color: Colors.white, size: 28),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+
                 Expanded(
                   child: Center(
                     child: SingleChildScrollView(
@@ -95,6 +65,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            // Logo Nohoch
+                            ClipOval(
+                              child: Container(
+                                color: Colors.white,
+                                child: Image.asset(
+                                  'assets/images/logo.png',
+                                  height: 140,
+                                  width: 140,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Nohoch',
+                              style: TextStyle(
+                                fontSize: 24,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
                             // Username field
                             _buildTextField(
                               controller: _emailController,
@@ -135,7 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       )
                                     : const Text(
-                                        'Get Started', // Match the image text, or 'Iniciar Sesión'
+                                        'Iniciar sesión', // Changed from Get Started
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
@@ -143,52 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                               ),
                             ),
-                            const SizedBox(height: 16),
-                            // Bottom Links
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                TextButton(
-                                  onPressed: () {},
-                                  child: const Text(
-                                    'Create Account', // Match image
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () {},
-                                  child: const Text(
-                                    'Need Help?', // Match image
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 32),
-                            // Helpful test accounts info
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.black45,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Usuarios de prueba:\nadmin@nohoch.com\ntesorero@nohoch.com\nmateriales@nohoch.com\nContraseña: 123456',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
+
                           ],
                         ),
                       ),
@@ -212,24 +159,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        border: Border.all(color: Colors.white54, width: 1.5),
       ),
       child: TextField(
         controller: controller,
         obscureText: isPassword,
-        style: const TextStyle(color: Colors.black87),
+        style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.black54),
-          prefixIcon: Icon(icon, color: Colors.black54),
+          hintStyle: const TextStyle(color: Colors.white70),
+          prefixIcon: Icon(icon, color: Colors.white70),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(25),
             borderSide: BorderSide.none,

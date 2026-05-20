@@ -9,6 +9,7 @@ class InventoryItem {
   final String status; // 'Bueno', 'Regular', 'Malo'
   final String description;
   final String iconName;
+  final String location;
   final DateTime registrationDate;
   final DateTime lastUpdateDate;
 
@@ -20,6 +21,7 @@ class InventoryItem {
     required this.status,
     required this.description,
     required this.iconName,
+    required this.location,
     required this.registrationDate,
     required this.lastUpdateDate,
   });
@@ -34,6 +36,7 @@ class InventoryItem {
     String? status,
     String? description,
     String? iconName,
+    String? location,
     DateTime? registrationDate,
     DateTime? lastUpdateDate,
   }) {
@@ -45,6 +48,7 @@ class InventoryItem {
       status: status ?? this.status,
       description: description ?? this.description,
       iconName: iconName ?? this.iconName,
+      location: location ?? this.location,
       registrationDate: registrationDate ?? this.registrationDate,
       lastUpdateDate: lastUpdateDate ?? this.lastUpdateDate,
     );

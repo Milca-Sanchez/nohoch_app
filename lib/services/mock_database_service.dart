@@ -18,32 +18,32 @@ class MockDatabaseService {
   late final List<InventoryItem> _inventory = [
     InventoryItem(
       id: '1', name: 'Hojas Blancas (Paquete)', categoryId: 'c1', quantity: 2, status: 'Bueno',
-      description: 'Paquete de 500 hojas blancas tamaño carta.', iconName: 'sticky_note_2',
+      description: 'Paquete de 500 hojas blancas tamaño carta.', iconName: 'sticky_note_2', location: 'Estante A1',
       registrationDate: DateTime.now().subtract(const Duration(days: 30)), lastUpdateDate: DateTime.now().subtract(const Duration(days: 2))
     ),
     InventoryItem(
       id: '2', name: 'Tijeras', categoryId: 'c1', quantity: 15, status: 'Bueno',
-      description: 'Tijeras de uso general para oficina.', iconName: 'content_cut',
+      description: 'Tijeras de uso general para oficina.', iconName: 'content_cut', location: 'Cajón de papelería',
       registrationDate: DateTime.now().subtract(const Duration(days: 40)), lastUpdateDate: DateTime.now().subtract(const Duration(days: 10))
     ),
     InventoryItem(
       id: '3', name: 'Bocina Bluetooth', categoryId: 'c4', quantity: 3, status: 'Bueno',
-      description: 'Bocina portátil de 40W para reuniones pequeñas.', iconName: 'speaker',
+      description: 'Bocina portátil de 40W para reuniones pequeñas.', iconName: 'speaker', location: 'Bodega de Sonido',
       registrationDate: DateTime.now().subtract(const Duration(days: 60)), lastUpdateDate: DateTime.now().subtract(const Duration(days: 5))
     ),
     InventoryItem(
       id: '4', name: 'Micrófono Inalámbrico', categoryId: 'c4', quantity: 4, status: 'Regular',
-      description: 'Sistema de 2 micrófonos inalámbricos UHF.', iconName: 'mic',
+      description: 'Sistema de 2 micrófonos inalámbricos UHF.', iconName: 'mic', location: 'Bodega de Sonido',
       registrationDate: DateTime.now().subtract(const Duration(days: 90)), lastUpdateDate: DateTime.now().subtract(const Duration(days: 20))
     ),
     InventoryItem(
       id: '5', name: 'Balón de Fútbol', categoryId: 'c3', quantity: 1, status: 'Malo',
-      description: 'Balón número 5 para dinámicas con jóvenes.', iconName: 'sports_soccer',
+      description: 'Balón número 5 para dinámicas con jóvenes.', iconName: 'sports_soccer', location: 'Cancha',
       registrationDate: DateTime.now().subtract(const Duration(days: 120)), lastUpdateDate: DateTime.now().subtract(const Duration(days: 1))
     ),
     InventoryItem(
       id: '6', name: 'Escobas', categoryId: 'c2', quantity: 8, status: 'Bueno',
-      description: 'Escobas de cerdas suaves para interior.', iconName: 'cleaning_services',
+      description: 'Escobas de cerdas suaves para interior.', iconName: 'cleaning_services', location: 'Cuarto de limpieza',
       registrationDate: DateTime.now().subtract(const Duration(days: 15)), lastUpdateDate: DateTime.now().subtract(const Duration(days: 5))
     ),
   ];

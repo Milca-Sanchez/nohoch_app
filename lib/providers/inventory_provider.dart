@@ -30,7 +30,7 @@ class InventoryProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addItem(InventoryItem item) async {
+  Future<void> addItem(InventoryItem item, String userName) async {
     _isLoading = true;
     notifyListeners();
     await _dbService.addInventoryItem(item);
@@ -40,7 +40,7 @@ class InventoryProvider with ChangeNotifier {
       id: const Uuid().v4(),
       itemId: item.id,
       date: DateTime.now(),
-      action: 'Material registrado',
+      action: 'Artículo \'${item.name}\' agregado por $userName',
       newQuantity: item.quantity,
       details: 'Registro inicial del material en el sistema.',
     );
