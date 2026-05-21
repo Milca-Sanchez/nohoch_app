@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +20,75 @@ class InventoryView extends StatefulWidget {
 class _InventoryViewState extends State<InventoryView> {
   String _selectedCategoryId = 'all';
 
+  String _getCategoryEmoji(String categoryId) {
+    switch (categoryId) {
+      case 'c1': return '📝';
+      case 'c2': return '🧹';
+      case 'c3': return '⚽';
+      case 'c4': return '🔊';
+      default: return '📦';
+    }
+  }
+
+  Widget _buildCardImage(String? imagePath, InventoryCategory category) {
+    if (imagePath == null || imagePath.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              category.color.withAlpha(40),
+              category.color.withAlpha(15),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          _getCategoryEmoji(category.id),
+          style: const TextStyle(fontSize: 36),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          bottomLeft: Radius.circular(16),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
+          ? Image.network(
+              imagePath,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) => _buildFallback(category),
+            )
+          : Image.file(
+              File(imagePath),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
+              errorBuilder: (context, error, stackTrace) => _buildFallback(category),
+            ),
+    );
+  }
+
+  Widget _buildFallback(InventoryCategory category) {
+    return Container(
+      color: Colors.grey[200],
+      alignment: Alignment.center,
+      child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context);
@@ -32,10 +103,12 @@ class _InventoryViewState extends State<InventoryView> {
         ? inventory.items.toList()
         : inventory.items.where((i) => i.categoryId == _selectedCategoryId).toList();
 
-    // Ordenar automáticamente: Bajo stock (< 5) al inicio
+    // Ordenar automáticamente: Bajo stock (< category.lowStockThreshold) al inicio
     displayedItems.sort((a, b) {
-      final aLow = a.quantity < 5;
-      final bLow = b.quantity < 5;
+      final aCat = inventory.categories.firstWhere((c) => c.id == a.categoryId);
+      final bCat = inventory.categories.firstWhere((c) => c.id == b.categoryId);
+      final aLow = a.quantity < aCat.lowStockThreshold;
+      final bLow = b.quantity < bCat.lowStockThreshold;
       if (aLow && !bLow) return -1;
       if (!aLow && bLow) return 1;
       return a.name.compareTo(b.name);
@@ -70,16 +143,16 @@ class _InventoryViewState extends State<InventoryView> {
             ),
             const SizedBox(height: 24),
 
-            // Grid de Materiales
+            // Grid de Materiales Horizontal Premium
             Expanded(
               child: displayedItems.isEmpty
                   ? const Center(child: Text('No hay materiales en esta categoría.'))
                   : GridView.builder(
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 320,
+                        maxCrossAxisExtent: 340,
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
-                        childAspectRatio: 0.85,
+                        childAspectRatio: 1.65,
                       ),
                       itemCount: displayedItems.length,
                       itemBuilder: (context, index) {
@@ -135,7 +208,7 @@ class _InventoryViewState extends State<InventoryView> {
   Widget _buildItemCard(BuildContext context, InventoryItem item, InventoryCategory category) {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('dd/MM/yyyy');
-    final isLowStock = item.quantity < 5;
+    final isLowStock = item.quantity < category.lowStockThreshold;
 
     return InkWell(
       onTap: () {
@@ -150,83 +223,116 @@ class _InventoryViewState extends State<InventoryView> {
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isLowStock ? Colors.redAccent.withAlpha(128) : theme.colorScheme.outlineVariant.withAlpha(128),
+            color: isLowStock ? Colors.redAccent.withAlpha(128) : theme.colorScheme.outlineVariant.withAlpha(100),
             width: isLowStock ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: isLowStock ? Colors.redAccent.withAlpha(20) : Colors.black.withAlpha(10),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: isLowStock ? Colors.redAccent.withAlpha(20) : Colors.black.withAlpha(8),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: category.color.withAlpha(30),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(item.icon, color: category.color, size: 28),
-                ),
-                const Spacer(),
-                if (isLowStock)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withAlpha(30),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
+            // Left side image
+            Expanded(
+              flex: 38,
+              child: _buildCardImage(item.imagePath, category),
+            ),
+            
+            // Right side details
+            Expanded(
+              flex: 62,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 14),
-                        SizedBox(width: 4),
-                        Text('Poco stock', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 10)),
+                        Expanded(
+                          child: Text(
+                            category.name,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: category.color,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isLowStock)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.redAccent.withAlpha(30),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 10),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Poco stock',
+                                  style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withAlpha(30),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'En stock',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 8,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.green.withAlpha(30),
-                      borderRadius: BorderRadius.circular(4),
+                    const Spacer(),
+                    Text(
+                      item.name,
+                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    child: const Text('En stock', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 10)),
-                  ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              item.name,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            Text(category.name, style: theme.textTheme.bodySmall?.copyWith(color: category.color)),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Cantidad: ${item.quantity}',
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    const Spacer(),
+                    const Divider(height: 1),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Cant: ${item.quantity}',
+                          style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          dateFormat.format(item.lastUpdateDate),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurface.withAlpha(120),
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Text(
-                  dateFormat.format(item.lastUpdateDate),
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withAlpha(150)),
-                ),
-              ],
+              ),
             ),
           ],
         ),

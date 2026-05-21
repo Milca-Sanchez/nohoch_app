@@ -49,6 +49,25 @@ class InventoryProvider with ChangeNotifier {
     await _loadData();
   }
 
+  Future<void> updateItem(InventoryItem item, String userName) async {
+    _isLoading = true;
+    notifyListeners();
+    await _dbService.updateInventoryItem(item);
+    
+    // Registro de historial
+    final history = InventoryHistory(
+      id: const Uuid().v4(),
+      itemId: item.id,
+      date: DateTime.now(),
+      action: 'Artículo \'${item.name}\' modificado por $userName',
+      newQuantity: item.quantity,
+      details: 'Modificación de detalles del material.',
+    );
+    await _dbService.addHistoryRecord(history);
+    
+    await _loadData();
+  }
+
   Future<void> updateQuantity(String itemId, int newQuantity, String reason) async {
     _isLoading = true;
     notifyListeners();

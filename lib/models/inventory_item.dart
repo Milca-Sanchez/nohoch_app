@@ -12,6 +12,7 @@ class InventoryItem {
   final String location;
   final DateTime registrationDate;
   final DateTime lastUpdateDate;
+  final String? imagePath;
 
   InventoryItem({
     required this.id,
@@ -24,6 +25,7 @@ class InventoryItem {
     required this.location,
     required this.registrationDate,
     required this.lastUpdateDate,
+    this.imagePath,
   });
 
   IconData get icon => IconMapper.getIcon(iconName);
@@ -39,6 +41,7 @@ class InventoryItem {
     String? location,
     DateTime? registrationDate,
     DateTime? lastUpdateDate,
+    String? imagePath,
   }) {
     return InventoryItem(
       id: id ?? this.id,
@@ -51,6 +54,7 @@ class InventoryItem {
       location: location ?? this.location,
       registrationDate: registrationDate ?? this.registrationDate,
       lastUpdateDate: lastUpdateDate ?? this.lastUpdateDate,
+      imagePath: imagePath ?? this.imagePath,
     );
   }
 }

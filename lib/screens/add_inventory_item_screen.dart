@@ -1,13 +1,18 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../providers/inventory_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/inventory_item.dart';
 
 class AddInventoryItemScreen extends StatefulWidget {
-  const AddInventoryItemScreen({super.key});
+  final InventoryItem? itemToEdit;
+  const AddInventoryItemScreen({super.key, this.itemToEdit});
 
   @override
   State<AddInventoryItemScreen> createState() => _AddInventoryItemScreenState();
@@ -23,6 +28,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
   String _description = '';
   String _location = '';
   String _iconName = 'build';
+  String? _imagePath;
 
   final List<String> _statuses = ['Bueno', 'Regular', 'Dañado', 'En reparación'];
   
@@ -39,6 +45,60 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
     'book': Icons.book,
   };
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.itemToEdit != null) {
+      final item = widget.itemToEdit!;
+      _name = item.name;
+      _categoryId = item.categoryId;
+      _quantity = item.quantity;
+      _status = item.status;
+      _description = item.description;
+      _location = item.location;
+      _iconName = item.iconName;
+      _imagePath = item.imagePath;
+    }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        String finalPath = pickedFile.path;
+        
+        if (!kIsWeb) {
+          finalPath = await _saveImagePermanently(pickedFile.path);
+        }
+
+        setState(() {
+          _imagePath = finalPath;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar la imagen: $e')),
+        );
+      }
+    }
+  }
+
+  Future<String> _saveImagePermanently(String tempPath) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final uniqueName = '${DateTime.now().millisecondsSinceEpoch}_${tempPath.split(Platform.pathSeparator).last}';
+    final savedFile = File('${directory.path}/$uniqueName');
+    await File(tempPath).copy(savedFile.path);
+    return savedFile.path;
+  }
+
   void _saveItem() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -51,27 +111,143 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
     // User name
     final userName = auth.currentUser?.name ?? 'Administrador';
 
-    final newItem = InventoryItem(
-      id: const Uuid().v4(),
-      name: _name,
-      categoryId: _categoryId!,
-      quantity: _quantity,
-      status: _status,
-      description: _description,
-      iconName: _iconName,
-      location: _location,
-      registrationDate: DateTime.now(),
-      lastUpdateDate: DateTime.now(),
-    );
-
-    await inventory.addItem(newItem, userName);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Artículo "$_name" guardado correctamente')),
+    if (widget.itemToEdit != null) {
+      final updatedItem = widget.itemToEdit!.copyWith(
+        name: _name,
+        categoryId: _categoryId!,
+        quantity: _quantity,
+        status: _status,
+        description: _description,
+        iconName: _iconName,
+        location: _location,
+        lastUpdateDate: DateTime.now(),
+        imagePath: _imagePath,
       );
-      Navigator.pop(context);
+
+      await inventory.updateItem(updatedItem, userName);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Artículo "$_name" actualizado correctamente')),
+        );
+        Navigator.pop(context);
+      }
+    } else {
+      final newItem = InventoryItem(
+        id: const Uuid().v4(),
+        name: _name,
+        categoryId: _categoryId!,
+        quantity: _quantity,
+        status: _status,
+        description: _description,
+        iconName: _iconName,
+        location: _location,
+        registrationDate: DateTime.now(),
+        lastUpdateDate: DateTime.now(),
+        imagePath: _imagePath,
+      );
+
+      await inventory.addItem(newItem, userName);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Artículo "$_name" guardado correctamente')),
+        );
+        Navigator.pop(context);
+      }
     }
+  }
+
+  Widget _buildImageSection(ThemeData theme) {
+    return Center(
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            height: 200,
+            constraints: const BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withAlpha(150),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: _imagePath != null
+                ? Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      kIsWeb || _imagePath!.startsWith('http') || _imagePath!.startsWith('blob:')
+                          ? Image.network(
+                              _imagePath!,
+                              fit: BoxFit.cover,
+                            )
+                          : Image.file(
+                              File(_imagePath!),
+                              fit: BoxFit.cover,
+                            ),
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Material(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                          child: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.white, size: 20),
+                            onPressed: () {
+                              setState(() {
+                                _imagePath = null;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.image_outlined,
+                        size: 64,
+                        color: theme.colorScheme.onSurfaceVariant.withAlpha(150),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Sin imagen del material',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant.withAlpha(180),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: _pickImage,
+            icon: const Icon(Icons.photo_camera_outlined),
+            label: Text(_imagePath != null ? 'Cambiar imagen' : 'Subir imagen'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -83,7 +259,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nuevo Artículo'),
+        title: Text(widget.itemToEdit != null ? 'Editar Artículo' : 'Nuevo Artículo'),
         backgroundColor: theme.colorScheme.surface,
         elevation: 0,
       ),
@@ -96,7 +272,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
             children: [
               // Title
               Text(
-                'Registrar Material',
+                widget.itemToEdit != null ? 'Modificar Material' : 'Registrar Material',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.primary,
@@ -104,8 +280,13 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
               ),
               const SizedBox(height: 24),
 
+              // Image Section
+              _buildImageSection(theme),
+              const SizedBox(height: 24),
+
               // Name
               TextFormField(
+                initialValue: _name,
                 decoration: InputDecoration(
                   labelText: 'Nombre del artículo *',
                   prefixIcon: const Icon(Icons.label_outline),
@@ -118,6 +299,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
 
               // Category
               DropdownButtonFormField<String>(
+                value: _categoryId,
                 decoration: InputDecoration(
                   labelText: 'Categoría *',
                   prefixIcon: const Icon(Icons.category_outlined),
@@ -141,7 +323,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      initialValue: '1',
+                      initialValue: _quantity.toString(),
                       keyboardType: TextInputType.number,
                       decoration: InputDecoration(
                         labelText: 'Cantidad *',
@@ -178,6 +360,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
 
               // Location
               TextFormField(
+                initialValue: _location,
                 decoration: InputDecoration(
                   labelText: 'Ubicación',
                   prefixIcon: const Icon(Icons.place_outlined),
@@ -189,6 +372,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
 
               // Description
               TextFormField(
+                initialValue: _description,
                 maxLines: 3,
                 decoration: InputDecoration(
                   labelText: 'Descripción',
@@ -236,7 +420,10 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _saveItem,
                   icon: const Icon(Icons.save),
-                  label: const Text('Guardar Artículo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  label: Text(
+                    widget.itemToEdit != null ? 'Guardar Cambios' : 'Guardar Artículo',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     foregroundColor: theme.colorScheme.onPrimary,
