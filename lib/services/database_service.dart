@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../models/inventory_item.dart';
 import '../models/treasury_record.dart';
 import '../models/inventory_category.dart';
@@ -7,8 +8,8 @@ import '../models/financial_history.dart';
 abstract class DatabaseService {
   Future<List<InventoryCategory>> getCategories();
   Future<List<InventoryItem>> getInventory();
-  Future<void> addInventoryItem(InventoryItem item);
-  Future<void> updateInventoryItem(InventoryItem item);
+  Future<void> addInventoryItem(InventoryItem item, {Uint8List? imageBytes});
+  Future<void> updateInventoryItem(InventoryItem item, {Uint8List? imageBytes});
   Future<void> deleteInventoryItem(String id);
   Future<List<InventoryHistory>> getInventoryHistory();
   Future<List<InventoryHistory>> getHistoryForItem(String itemId);

@@ -65,28 +65,25 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                 panEnabled: true,
                 minScale: 0.5,
                 maxScale: 4.0,
-                child: Hero(
-                  tag: 'item-image-$itemId',
-                  child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
-                      ? Image.network(
-                          imagePath,
-                          fit: BoxFit.contain,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return const Center(child: CircularProgressIndicator(color: Colors.white));
-                          },
-                          errorBuilder: (context, error, stackTrace) => const Center(
-                            child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
-                          ),
-                        )
-                      : Image.file(
-                          File(imagePath),
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Center(
-                            child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
-                          ),
+                child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
+                    ? Image.network(
+                        imagePath,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const Center(child: CircularProgressIndicator(color: Colors.white));
+                        },
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
                         ),
-                ),
+                      )
+                    : Image.file(
+                        File(imagePath),
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) => const Center(
+                          child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
+                        ),
+                      ),
               ),
             ),
           );
@@ -126,46 +123,43 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
     return GestureDetector(
       onTap: () => _showFullImage(context, imagePath, item.name, item.id),
-      child: Hero(
-        tag: 'item-image-${item.id}',
-        child: Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: category.color.withAlpha(80),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(20),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+      child: Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: category.color.withAlpha(80),
+            width: 1.5,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
-              ? Image.network(
-                  imagePath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey[200],
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.broken_image, size: 40),
-                  ),
-                )
-              : Image.file(
-                  File(imagePath),
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: Colors.grey[200],
-                    alignment: Alignment.center,
-                    child: const Icon(Icons.broken_image, size: 40),
-                  ),
-                ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(20),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
+        clipBehavior: Clip.antiAlias,
+        child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
+            ? Image.network(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey[200],
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.broken_image, size: 40),
+                ),
+              )
+            : Image.file(
+                File(imagePath),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey[200],
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.broken_image, size: 40),
+                ),
+              ),
       ),
     );
   }

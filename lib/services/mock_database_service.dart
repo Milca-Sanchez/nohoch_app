@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/inventory_item.dart';
 import '../models/treasury_record.dart';
@@ -95,19 +96,17 @@ class MockDatabaseService implements DatabaseService {
   }
 
   @override
-  Future<void> addInventoryItem(InventoryItem item) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _inventory.add(item);
-  }
+Future<void> addInventoryItem(InventoryItem item, {Uint8List? imageBytes}) async {
+  await Future.delayed(const Duration(milliseconds: 500));
+  _inventory.add(item);
+}
 
-  @override
-  Future<void> updateInventoryItem(InventoryItem item) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final index = _inventory.indexWhere((i) => i.id == item.id);
-    if (index != -1) {
-      _inventory[index] = item;
-    }
-  }
+@override
+Future<void> updateInventoryItem(InventoryItem item, {Uint8List? imageBytes}) async {
+  await Future.delayed(const Duration(milliseconds: 500));
+  final index = _inventory.indexWhere((i) => i.id == item.id);
+  if (index != -1) _inventory[index] = item;
+}
 
   @override
   Future<void> deleteInventoryItem(String id) async {

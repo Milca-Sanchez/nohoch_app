@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -7,7 +7,7 @@ import '../models/treasury_record.dart';
 import '../models/inventory_category.dart';
 import '../models/inventory_history.dart';
 import '../models/financial_history.dart';
-import 'database_service.dart'; // Importar la interfaz
+import 'database_service.dart';
 
 class SupabaseDatabaseService implements DatabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -37,6 +37,25 @@ class SupabaseDatabaseService implements DatabaseService {
     }
   }
 
+  // ==================== SUBIR IMAGEN (BYTES) ====================
+  /// Sube una imagen a Supabase Storage usando bytes (compatible con web y móvil)
+  Future<String?> _uploadImageBytes(Uint8List bytes, String bucketName) async {
+    try {
+      final fileName = '${_uuid.v4()}.jpg';
+      await _supabase.storage.from(bucketName).uploadBinary(
+        fileName,
+        bytes,
+        fileOptions: const FileOptions(contentType: 'image/jpeg'),
+      );
+      final publicUrl = _supabase.storage.from(bucketName).getPublicUrl(fileName);
+      print('✅ Imagen subida: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      print('❌ Error al subir imagen: $e');
+      return null;
+    }
+  }
+
   // ==================== INVENTARIO ====================
   @override
   Future<List<InventoryItem>> getInventory() async {
@@ -56,8 +75,8 @@ class SupabaseDatabaseService implements DatabaseService {
           description: item['descripcion'] ?? '',
           iconName: item['nombre_icono'],
           location: item['ubicacion'] ?? '',
-          registrationDate: DateTime.parse(item['fecha_registro']),
-          lastUpdateDate: DateTime.parse(item['fecha_actualizacion']),
+          registrationDate: DateTime.parse(item['fecha_registro']).toLocal(),
+          lastUpdateDate: DateTime.parse(item['fecha_actualizacion']).toLocal(),
           imagePath: item['ruta_imagen'],
         );
       }).toList();
@@ -68,8 +87,16 @@ class SupabaseDatabaseService implements DatabaseService {
   }
 
   @override
-  Future<void> addInventoryItem(InventoryItem item) async {
+  Future<void> addInventoryItem(InventoryItem item, {Uint8List? imageBytes}) async {
     try {
+      String? finalImageUrl = item.imagePath;
+      // Si se proporcionan bytes, subir la imagen y obtener URL
+      if (imageBytes != null) {
+        finalImageUrl = await _uploadImageBytes(imageBytes, 'materiales');
+      }
+      // Si no hay bytes pero hay una ruta local (solo en móvil), aún podrías leer los bytes,
+      // pero se prefiere pasar los bytes desde la UI. Por simplicidad, se asume que se usan bytes.
+
       await _supabase.from('materiales').insert({
         'id': item.id,
         'nombre': item.name,
@@ -79,9 +106,9 @@ class SupabaseDatabaseService implements DatabaseService {
         'descripcion': item.description,
         'nombre_icono': item.iconName,
         'ubicacion': item.location,
-        'fecha_registro': item.registrationDate.toIso8601String(),
-        'fecha_actualizacion': item.lastUpdateDate.toIso8601String(),
-        'ruta_imagen': item.imagePath,
+        'fecha_registro': item.registrationDate.toUtc().toIso8601String(),
+        'fecha_actualizacion': item.lastUpdateDate.toUtc().toIso8601String(),
+        'ruta_imagen': finalImageUrl,
       });
     } catch (e) {
       print('Error al agregar artículo: $e');
@@ -90,8 +117,13 @@ class SupabaseDatabaseService implements DatabaseService {
   }
 
   @override
-  Future<void> updateInventoryItem(InventoryItem item) async {
+  Future<void> updateInventoryItem(InventoryItem item, {Uint8List? imageBytes}) async {
     try {
+      String? finalImageUrl = item.imagePath;
+      if (imageBytes != null) {
+        finalImageUrl = await _uploadImageBytes(imageBytes, 'materiales');
+      }
+
       await _supabase
           .from('materiales')
           .update({
@@ -102,8 +134,8 @@ class SupabaseDatabaseService implements DatabaseService {
             'descripcion': item.description,
             'nombre_icono': item.iconName,
             'ubicacion': item.location,
-            'fecha_actualizacion': item.lastUpdateDate.toIso8601String(),
-            'ruta_imagen': item.imagePath,
+            'fecha_actualizacion': item.lastUpdateDate.toUtc().toIso8601String(),
+            'ruta_imagen': finalImageUrl,
           })
           .match({'id': item.id});
     } catch (e) {
@@ -115,6 +147,9 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<void> deleteInventoryItem(String id) async {
     try {
+      // Eliminar registros hijos en el historial primero para evitar violaciones de clave foránea
+      await _supabase.from('historial_inventario').delete().match({'material_id': id});
+      // Luego eliminar el material principal
       await _supabase.from('materiales').delete().match({'id': id});
     } catch (e) {
       print('Error al eliminar artículo: $e');
@@ -135,7 +170,7 @@ class SupabaseDatabaseService implements DatabaseService {
         return InventoryHistory(
           id: h['id'],
           itemId: h['material_id'],
-          date: DateTime.parse(h['fecha']),
+          date: DateTime.parse(h['fecha']).toLocal(),
           action: h['accion'],
           oldQuantity: h['cantidad_anterior'],
           newQuantity: h['cantidad_nueva'],
@@ -161,7 +196,7 @@ class SupabaseDatabaseService implements DatabaseService {
         return InventoryHistory(
           id: h['id'],
           itemId: h['material_id'],
-          date: DateTime.parse(h['fecha']),
+          date: DateTime.parse(h['fecha']).toLocal(),
           action: h['accion'],
           oldQuantity: h['cantidad_anterior'],
           newQuantity: h['cantidad_nueva'],
@@ -176,11 +211,14 @@ class SupabaseDatabaseService implements DatabaseService {
 
   @override
   Future<void> addHistoryRecord(InventoryHistory record) async {
+    final isDeletion = record.action.contains('eliminada') ||
+                       record.action.contains('eliminado') ||
+                       record.action.contains('🗑');
     try {
       await _supabase.from('historial_inventario').insert({
         'id': _uuid.v4(),
-        'material_id': record.itemId,
-        'fecha': record.date.toIso8601String(),
+        'material_id': isDeletion ? null : record.itemId,
+        'fecha': record.date.toUtc().toIso8601String(),
         'accion': record.action,
         'cantidad_anterior': record.oldQuantity,
         'cantidad_nueva': record.newQuantity,
@@ -188,7 +226,11 @@ class SupabaseDatabaseService implements DatabaseService {
       });
     } catch (e) {
       print('Error al agregar historial: $e');
-      rethrow;
+      if (isDeletion) {
+        print('⚠️ Deletion history record insertion failed due to database constraints. Swallowing error to allow the item deletion to proceed.');
+      } else {
+        rethrow;
+      }
     }
   }
 
@@ -206,7 +248,7 @@ class SupabaseDatabaseService implements DatabaseService {
           id: r['id'],
           concept: r['concepto'],
           amount: (r['monto'] as num).toDouble(),
-          date: DateTime.parse(r['fecha']),
+          date: DateTime.parse(r['fecha']).toLocal(),
           description: r['descripcion'],
           responsible: r['responsable'],
           notes: r['notas'],
@@ -226,7 +268,7 @@ class SupabaseDatabaseService implements DatabaseService {
         'id': record.id,
         'concepto': record.concept,
         'monto': record.amount,
-        'fecha': record.date.toIso8601String(),
+        'fecha': record.date.toUtc().toIso8601String(),
         'descripcion': record.description,
         'responsable': record.responsible,
         'notas': record.notes,
@@ -246,7 +288,7 @@ class SupabaseDatabaseService implements DatabaseService {
           .update({
             'concepto': record.concept,
             'monto': record.amount,
-            'fecha': record.date.toIso8601String(),
+            'fecha': record.date.toUtc().toIso8601String(),
             'descripcion': record.description,
             'responsable': record.responsible,
             'notas': record.notes,
@@ -262,6 +304,9 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<void> deleteTreasuryRecord(String id) async {
     try {
+      // Eliminar registros hijos en el historial financiero primero para evitar violaciones de clave foránea
+      await _supabase.from('historial_financiero').delete().match({'movimiento_id': id});
+      // Luego eliminar el movimiento de tesorería principal
       await _supabase.from('movimientos_tesoreria').delete().match({'id': id});
     } catch (e) {
       print('Error al eliminar movimiento: $e');
@@ -282,7 +327,7 @@ class SupabaseDatabaseService implements DatabaseService {
         return FinancialHistory(
           id: fh['id'],
           recordId: fh['movimiento_id'],
-          date: DateTime.parse(fh['fecha']),
+          date: DateTime.parse(fh['fecha']).toLocal(),
           action: fh['accion'],
           responsible: fh['responsable'],
           details: fh['detalles'],
@@ -296,18 +341,24 @@ class SupabaseDatabaseService implements DatabaseService {
 
   @override
   Future<void> addFinancialHistory(FinancialHistory history) async {
+    final isDeletion = history.action.toLowerCase().contains('eliminado') ||
+                       history.action.toLowerCase().contains('eliminada');
     try {
       await _supabase.from('historial_financiero').insert({
         'id': _uuid.v4(),
-        'movimiento_id': history.recordId,
-        'fecha': history.date.toIso8601String(),
+        'movimiento_id': isDeletion ? null : history.recordId,
+        'fecha': history.date.toUtc().toIso8601String(),
         'accion': history.action,
         'responsable': history.responsible,
         'detalles': history.details,
       });
     } catch (e) {
       print('Error al agregar historial financiero: $e');
-      rethrow;
+      if (isDeletion) {
+        print('⚠️ Deletion financial history record insertion failed due to database constraints. Swallowing error to allow the treasury movement deletion to proceed.');
+      } else {
+        rethrow;
+      }
     }
   }
 }

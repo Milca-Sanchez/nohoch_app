@@ -593,12 +593,15 @@ class RecentActivityScreen extends StatelessWidget {
           }
         }
 
-        // Filtrar por fecha actual si onlyToday es verdadero (utilizando la lógica robusta de cadenas ISO)
+        // Filtrar por fecha actual si onlyToday es verdadero (utilizando la lógica robusta de calendario local)
         if (onlyToday) {
-          final todayStr = DateTime.now().toLocal().toIso8601String().substring(0, 10);
+          final now = DateTime.now();
           combinedActivities.removeWhere((a) {
-            final dateStr = a.date.toLocal().toIso8601String().substring(0, 10);
-            return a.activityType == 'alert' || dateStr != todayStr;
+            final localDate = a.date.toLocal();
+            final isSameDay = localDate.year == now.year &&
+                              localDate.month == now.month &&
+                              localDate.day == now.day;
+            return a.activityType == 'alert' || !isSameDay;
           });
         }
 

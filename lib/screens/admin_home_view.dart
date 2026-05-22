@@ -31,14 +31,18 @@ class AdminHomeView extends StatelessWidget {
     final lowStockProducts = inventory.items.where((i) => i.quantity <= 5).length;
     final currentBalance = treasury.balance;
 
-    final todayStr = DateTime.now().toLocal().toIso8601String().substring(0, 10);
+    final now = DateTime.now();
     final todaysTreasury = treasury.financialHistory.where((fh) {
-      final dateStr = fh.date.toLocal().toIso8601String().substring(0, 10);
-      return dateStr == todayStr;
+      final localDate = fh.date.toLocal();
+      return localDate.year == now.year &&
+             localDate.month == now.month &&
+             localDate.day == now.day;
     }).length;
     final todaysInventory = inventory.history.where((h) {
-      final dateStr = h.date.toLocal().toIso8601String().substring(0, 10);
-      return dateStr == todayStr;
+      final localDate = h.date.toLocal();
+      return localDate.year == now.year &&
+             localDate.month == now.month &&
+             localDate.day == now.day;
     }).length;
     final todaysMovements = todaysTreasury + todaysInventory;
 
@@ -175,7 +179,7 @@ class AdminHomeView extends StatelessWidget {
           const SizedBox(height: 28),
 
           // =========================================================================
-          // 4. MÓDULOS PRINCIPALES (OMITIDOS Y COMENTADOS SEGÚN SOLICITUD DEL USUARIO)
+          // 4. MÓDULOS PRINCIPALES 
           // =========================================================================
           /*
           Text(

@@ -4,7 +4,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'theme/app_theme.dart';
-import 'services/mock_database_service.dart';       // ya no se usará, pero lo dejamos por si acaso
+import 'services/mock_database_service.dart';      
 import 'services/supabase_database_service.dart';   // nuevo
 import 'services/supabase_auth_service.dart';      // nuevo
 import 'providers/auth_provider.dart';
@@ -20,8 +20,8 @@ void main() async {
   
   // ==================== INICIALIZAR SUPABASE ====================
   await Supabase.initialize(
-    url: 'https://oqeilsrwqvrlquitqisy.supabase.co',    // <-- REEMPLAZA
-    anonKey: 'sb_publishable_LsfgabbecaegiEAr3YBRZQ_46TZ3LZc',  // <-- REEMPLAZA
+    url: 'https://oqeilsrwqvrlquitqisy.supabase.co',   
+    anonKey: 'sb_publishable_LsfgabbecaegiEAr3YBRZQ_46TZ3LZc',  
   );
 
   // ==================== SERVICIOS REALES ====================
