@@ -30,7 +30,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = auth.currentUser;
     final theme = Theme.of(context);
 
-    // Definir destinos según el rol
     List<BottomNavigationBarItem> destinations = [];
     List<Widget> views = [];
 
@@ -52,7 +51,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       views = [
         const TreasuryView(),
       ];
-      // Si _selectedIndex se sale del rango
       if (_selectedIndex >= views.length) _selectedIndex = 0;
     } else if (user?.role == UserRole.materiales) {
       destinations = const [
@@ -67,63 +65,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nohoch', style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: false, // Alinea el título a la izquierda para evitar desbordamiento en celular
         actions: [
           Consumer<ThemeProvider>(
             builder: (context, themeProvider, child) {
               return IconButton(
                 icon: Icon(themeProvider.isDarkMode ? Icons.light_mode : Icons.dark_mode),
                 tooltip: themeProvider.isDarkMode ? 'Modo Claro' : 'Modo Oscuro',
-                onPressed: () {
-                  themeProvider.toggleTheme();
-                },
+                onPressed: () => themeProvider.toggleTheme(),
               );
             },
           ),
-          PopupMenuButton<String>(
-            tooltip: 'Opciones de sesión',
-            onSelected: (value) {
-              if (value == 'logout') {
-                auth.logout();
-              }
-            },
-            itemBuilder: (BuildContext context) {
-              return [
-                PopupMenuItem<String>(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, color: theme.colorScheme.error),
-                      const SizedBox(width: 8),
-                      Text('Cerrar sesión', style: TextStyle(color: theme.colorScheme.error)),
-                    ],
-                  ),
-                ),
-              ];
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  Text('Hola, ${user?.name} 👋', style: theme.textTheme.titleSmall),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_drop_down, size: 20),
-                ],
-              ),
-            ),
+          IconButton(
+            icon: Icon(Icons.logout, color: theme.colorScheme.error),
+            tooltip: 'Cerrar sesión',
+            onPressed: () => auth.logout(),
           ),
         ],
       ),
       body: views.isNotEmpty ? views[_selectedIndex] : const Center(child: Text('Sin acceso')),
-      bottomNavigationBar: destinations.length > 1 ? BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onNavigate,
-        items: destinations,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: theme.colorScheme.primary,
-        unselectedItemColor: theme.colorScheme.onSurfaceVariant,
-        backgroundColor: theme.colorScheme.surface,
-        elevation: 8,
-      ) : null,
+      bottomNavigationBar: destinations.length > 1
+          ? BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _onNavigate,
+              items: destinations,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: theme.colorScheme.primary,
+              unselectedItemColor: theme.colorScheme.onSurfaceVariant,
+              backgroundColor: theme.colorScheme.surface,
+              elevation: 8,
+            )
+          : null,
     );
   }
 }

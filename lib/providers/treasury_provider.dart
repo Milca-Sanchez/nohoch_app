@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../models/treasury_record.dart';
 import '../models/financial_history.dart';
-import '../services/mock_database_service.dart';
+import '../services/database_service.dart'; // Cambio aquí
 
 class TreasuryProvider with ChangeNotifier {
-  final MockDatabaseService _dbService;
+  final DatabaseService _dbService; // Cambio aquí
   List<TreasuryRecord> _records = [];
+  List<FinancialHistory> _financialHistory = [];
   bool _isLoading = false;
 
   TreasuryProvider(this._dbService) {
@@ -14,6 +15,7 @@ class TreasuryProvider with ChangeNotifier {
   }
 
   List<TreasuryRecord> get records => _records;
+  List<FinancialHistory> get financialHistory => _financialHistory;
   List<TreasuryRecord> get incomes => _records.where((r) => r.isIncome).toList();
   List<TreasuryRecord> get expenses => _records.where((r) => !r.isIncome).toList();
   
@@ -36,6 +38,7 @@ class TreasuryProvider with ChangeNotifier {
     notifyListeners();
     
     _records = await _dbService.getTreasuryRecords();
+    _financialHistory = await _dbService.getFinancialHistory();
     
     _isLoading = false;
     notifyListeners();
@@ -47,7 +50,6 @@ class TreasuryProvider with ChangeNotifier {
     
     await _dbService.addTreasuryRecord(record);
     
-    // Registrar historial
     final history = FinancialHistory(
       id: const Uuid().v4(),
       recordId: record.id,
@@ -68,12 +70,30 @@ class TreasuryProvider with ChangeNotifier {
     final record = _records.firstWhere((r) => r.id == recordId);
     await _dbService.deleteTreasuryRecord(recordId);
 
-    // Registrar historial
     final history = FinancialHistory(
       id: const Uuid().v4(),
       recordId: recordId,
       date: DateTime.now(),
       action: record.isIncome ? 'Ingreso eliminado' : 'Egreso eliminado',
+      responsible: userName,
+      details: 'Monto: \$${record.amount} - Concepto: ${record.concept}',
+    );
+    await _dbService.addFinancialHistory(history);
+    
+    await _loadRecords();
+  }
+
+  Future<void> updateRecord(TreasuryRecord record, String userName) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    await _dbService.updateTreasuryRecord(record);
+    
+    final history = FinancialHistory(
+      id: const Uuid().v4(),
+      recordId: record.id,
+      date: DateTime.now(),
+      action: record.isIncome ? 'Ingreso modificado' : 'Egreso modificado',
       responsible: userName,
       details: 'Monto: \$${record.amount} - Concepto: ${record.concept}',
     );

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'theme/app_theme.dart';
-import 'services/mock_database_service.dart';
+import 'services/mock_database_service.dart';       // ya no se usará, pero lo dejamos por si acaso
+import 'services/supabase_database_service.dart';   // nuevo
+import 'services/supabase_auth_service.dart';      // nuevo
 import 'providers/auth_provider.dart';
 import 'providers/inventory_provider.dart';
 import 'providers/treasury_provider.dart';
@@ -15,12 +18,20 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es', null);
   
-  final dbService = MockDatabaseService();
+  // ==================== INICIALIZAR SUPABASE ====================
+  await Supabase.initialize(
+    url: 'https://oqeilsrwqvrlquitqisy.supabase.co',    // <-- REEMPLAZA
+    anonKey: 'sb_publishable_LsfgabbecaegiEAr3YBRZQ_46TZ3LZc',  // <-- REEMPLAZA
+  );
+
+  // ==================== SERVICIOS REALES ====================
+  final dbService = SupabaseDatabaseService();   // ← conexión a tablas
+  final authService = SupabaseAuthService();    // ← autenticación contra tabla usuarios
 
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
         ChangeNotifierProvider(create: (_) => InventoryProvider(dbService)),
         ChangeNotifierProvider(create: (_) => TreasuryProvider(dbService)),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),

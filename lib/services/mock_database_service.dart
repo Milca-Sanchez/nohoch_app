@@ -4,8 +4,9 @@ import '../models/treasury_record.dart';
 import '../models/inventory_category.dart';
 import '../models/inventory_history.dart';
 import '../models/financial_history.dart';
+import 'database_service.dart'; // Importar la interfaz
 
-class MockDatabaseService {
+class MockDatabaseService implements DatabaseService {
   // Categorías
   final List<InventoryCategory> _categories = [
     InventoryCategory(id: 'c1', name: 'Papelería', iconName: 'edit', color: Colors.blue, lowStockThreshold: 10),
@@ -80,22 +81,26 @@ class MockDatabaseService {
   ];
 
   // --- Categorías ---
+  @override
   Future<List<InventoryCategory>> getCategories() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return List.unmodifiable(_categories);
   }
 
   // --- Inventario ---
+  @override
   Future<List<InventoryItem>> getInventory() async {
     await Future.delayed(const Duration(milliseconds: 800));
     return List.unmodifiable(_inventory);
   }
 
+  @override
   Future<void> addInventoryItem(InventoryItem item) async {
     await Future.delayed(const Duration(milliseconds: 500));
     _inventory.add(item);
   }
 
+  @override
   Future<void> updateInventoryItem(InventoryItem item) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final index = _inventory.indexWhere((i) => i.id == item.id);
@@ -104,29 +109,46 @@ class MockDatabaseService {
     }
   }
 
+  @override
+  Future<void> deleteInventoryItem(String id) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    _inventory.removeWhere((i) => i.id == id);
+  }
+
   // --- Historial Inventario ---
+  @override
   Future<List<InventoryHistory>> getHistoryForItem(String itemId) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return _history.where((h) => h.itemId == itemId).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  @override
+  Future<List<InventoryHistory>> getInventoryHistory() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return List.unmodifiable(_history);
+  }
+
+  @override
   Future<void> addHistoryRecord(InventoryHistory record) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _history.add(record);
   }
 
   // --- Tesorería ---
+  @override
   Future<List<TreasuryRecord>> getTreasuryRecords() async {
     await Future.delayed(const Duration(milliseconds: 800));
     return List.unmodifiable(_treasury);
   }
 
+  @override
   Future<void> addTreasuryRecord(TreasuryRecord record) async {
     await Future.delayed(const Duration(milliseconds: 500));
     _treasury.add(record);
   }
 
+  @override
   Future<void> updateTreasuryRecord(TreasuryRecord record) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final index = _treasury.indexWhere((r) => r.id == record.id);
@@ -134,18 +156,21 @@ class MockDatabaseService {
       _treasury[index] = record;
     }
   }
-  
+
+  @override
   Future<void> deleteTreasuryRecord(String id) async {
     await Future.delayed(const Duration(milliseconds: 500));
     _treasury.removeWhere((r) => r.id == id);
   }
 
   // --- Historial Financiero ---
+  @override
   Future<List<FinancialHistory>> getFinancialHistory() async {
     await Future.delayed(const Duration(milliseconds: 300));
     return List.unmodifiable(_financialHistory);
   }
 
+  @override
   Future<void> addFinancialHistory(FinancialHistory record) async {
     await Future.delayed(const Duration(milliseconds: 300));
     _financialHistory.add(record);

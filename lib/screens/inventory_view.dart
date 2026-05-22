@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 import '../providers/inventory_provider.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_category.dart';
+import '../services/export_service.dart';
 import 'item_detail_screen.dart';
 import 'add_inventory_item_screen.dart';
+import '../providers/auth_provider.dart';
 
 class InventoryView extends StatefulWidget {
   const InventoryView({super.key});
@@ -33,59 +35,66 @@ class _InventoryViewState extends State<InventoryView> {
   Widget _buildCardImage(String? imagePath, InventoryCategory category) {
     if (imagePath == null || imagePath.isEmpty) {
       return Container(
+        height: 120,
+        width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              category.color.withAlpha(40),
-              category.color.withAlpha(15),
+              category.color.withAlpha(35),
+              category.color.withAlpha(12),
             ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
           borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            bottomLeft: Radius.circular(16),
+            topLeft: Radius.circular(15),
+            topRight: Radius.circular(15),
           ),
         ),
         alignment: Alignment.center,
         child: Text(
           _getCategoryEmoji(category.id),
-          style: const TextStyle(fontSize: 36),
+          style: const TextStyle(fontSize: 54),
         ),
       );
-    }
-
-    return Container(
-      decoration: const BoxDecoration(
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          bottomLeft: Radius.circular(16),
+    } else {
+      return ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(15),
+          topRight: Radius.circular(15),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
-          ? Image.network(
-              imagePath,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) => _buildFallback(category),
-            )
-          : Image.file(
-              File(imagePath),
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
-              errorBuilder: (context, error, stackTrace) => _buildFallback(category),
-            ),
-    );
+        child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
+            ? Image.network(
+                imagePath,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 120,
+                errorBuilder: (context, error, stackTrace) => _buildFallback(category),
+              )
+            : Image.file(
+                File(imagePath),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: 120,
+                errorBuilder: (context, error, stackTrace) => _buildFallback(category),
+              ),
+      );
+    }
   }
 
   Widget _buildFallback(InventoryCategory category) {
     return Container(
-      color: Colors.grey[200],
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(15),
+          topRight: Radius.circular(15),
+        ),
+      ),
       alignment: Alignment.center,
-      child: const Icon(Icons.broken_image, size: 24, color: Colors.grey),
+      child: const Icon(Icons.broken_image, size: 36, color: Colors.grey),
     );
   }
 
@@ -120,23 +129,51 @@ class _InventoryViewState extends State<InventoryView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Inventario de Materiales',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Inventario de Materiales',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onBackground,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildExportButton(
+                      label: 'Exportar PDF',
+                      icon: Icons.picture_as_pdf,
+                      color: Colors.redAccent.shade700,
+                      onTap: () => _handleExport(context, isPdf: true),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildExportButton(
+                      label: 'Exportar CSV',
+                      icon: Icons.table_chart,
+                      color: Colors.green.shade700,
+                      onTap: () => _handleExport(context, isPdf: false),
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 24),
             
-            // Barra de filtros (Categorías)
+            // Barra de filtros (Categorías) - Diseño premium interactivo (Estilo Choose Category)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none, // Permite dibujar las sombras completas de los cards
               child: Row(
                 children: [
-                  _buildFilterChip('all', 'Todos los materiales', theme),
+                  _buildFilterChip('all', 'Todos', theme, theme.colorScheme.primary, '📦'),
                   ...inventory.categories.map(
-                    (cat) => _buildFilterChip(cat.id, cat.name, theme),
+                    (cat) => _buildFilterChip(cat.id, cat.name, theme, cat.color, _getCategoryEmoji(cat.id)),
                   ),
                 ],
               ),
@@ -149,10 +186,10 @@ class _InventoryViewState extends State<InventoryView> {
                   ? const Center(child: Text('No hay materiales en esta categoría.'))
                   : GridView.builder(
                       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 340,
+                        maxCrossAxisExtent: 180, // Estandarizado para 2 columnas en mobile, y adaptabilidad en pantallas anchas
                         mainAxisSpacing: 16,
                         crossAxisSpacing: 16,
-                        childAspectRatio: 1.65,
+                        childAspectRatio: 0.68, // Ajustado a 0.68 para garantizar altura suficiente y prevenir overflows en pantallas móviles estrechas
                       ),
                       itemCount: displayedItems.length,
                       itemBuilder: (context, index) {
@@ -168,37 +205,70 @@ class _InventoryViewState extends State<InventoryView> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddItemDialog(context),
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo Artículo'),
+        label: const Text('Agregar'),
       ),
     );
   }
 
-  Widget _buildFilterChip(String id, String label, ThemeData theme) {
+  Widget _buildFilterChip(String id, String label, ThemeData theme, Color categoryColor, String emoji) {
     final isSelected = _selectedCategoryId == id;
     return Padding(
-      padding: const EdgeInsets.only(right: 8.0),
+      padding: const EdgeInsets.only(right: 12.0),
       child: InkWell(
         onTap: () {
           setState(() {
             _selectedCategoryId = id;
           });
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          width: 85,
+          height: 100,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? theme.colorScheme.primaryContainer : theme.colorScheme.surfaceContainerHighest.withAlpha(128),
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected 
+                ? categoryColor.withAlpha(25) 
+                : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? theme.colorScheme.primary.withAlpha(128) : Colors.transparent,
+              color: isSelected ? categoryColor : theme.colorScheme.outlineVariant.withAlpha(100),
+              width: isSelected ? 2 : 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected 
+                    ? categoryColor.withAlpha(30) 
+                    : Colors.black.withAlpha(8),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
-          child: Text(
-            label,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: isSelected ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurfaceVariant,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                emoji,
+                style: const TextStyle(fontSize: 32),
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isSelected ? categoryColor : theme.colorScheme.onSurface.withAlpha(160),
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 11,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -234,19 +304,86 @@ class _InventoryViewState extends State<InventoryView> {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left side image
-            Expanded(
-              flex: 38,
-              child: _buildCardImage(item.imagePath, category),
+            // Standardized centered image/icon container at top
+            Stack(
+              children: [
+                _buildCardImage(item.imagePath, category),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: theme.brightness == Brightness.dark
+                          ? Colors.white.withOpacity(0.8)
+                          : Colors.black.withOpacity(0.6),
+                      size: 20,
+                    ),
+                    tooltip: 'Opciones',
+                    elevation: 4,
+                    shadowColor: Colors.black.withOpacity(0.12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    color: theme.brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 120),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _handleEditItem(context, item);
+                      } else if (value == 'delete') {
+                        _confirmDeleteItem(context, item);
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Editar',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(height: 1),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Eliminar',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             
-            // Right side details
+            // Bottom details section
             Expanded(
-              flex: 62,
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -304,10 +441,13 @@ class _InventoryViewState extends State<InventoryView> {
                           ),
                       ],
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     Text(
                       item.name,
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.1,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -337,6 +477,285 @@ class _InventoryViewState extends State<InventoryView> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildExportButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 700;
+
+    return FilledButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: isMobile ? 16 : 18),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: isMobile ? 13 : 14,
+        ),
+      ),
+      style: FilledButton.styleFrom(
+        backgroundColor: color,
+        padding: isMobile
+            ? const EdgeInsets.symmetric(horizontal: 12, vertical: 8)
+            : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+    );
+  }
+
+  void _handleExport(BuildContext context, {required bool isPdf}) {
+    final inventory = Provider.of<InventoryProvider>(context, listen: false);
+    final items = inventory.items;
+    final categories = inventory.categories;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        bool onlyLowStock = false;
+        return StatefulBuilder(
+          builder: (statefulContext, setStateDialog) {
+            final theme = Theme.of(statefulContext);
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Icon(
+                    isPdf ? Icons.picture_as_pdf : Icons.grid_on,
+                    color: isPdf ? Colors.red[800] : Colors.green[800],
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    isPdf ? 'Exportar a PDF' : 'Exportar a CSV',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Seleccione los materiales a incluir en el reporte:',
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Option 1: All Materials
+                  InkWell(
+                    onTap: () {
+                      setStateDialog(() {
+                        onlyLowStock = false;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: !onlyLowStock ? theme.colorScheme.primary : theme.colorScheme.outlineVariant.withAlpha(100),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: !onlyLowStock ? theme.colorScheme.primary.withAlpha(15) : Colors.transparent,
+                      ),
+                      child: Row(
+                        children: [
+                          Radio<bool>(
+                            value: false,
+                            groupValue: onlyLowStock,
+                            onChanged: (val) {
+                              setStateDialog(() {
+                                onlyLowStock = val!;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Todos los materiales',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Option 2: Low Stock Materials
+                  InkWell(
+                    onTap: () {
+                      setStateDialog(() {
+                        onlyLowStock = true;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: onlyLowStock ? theme.colorScheme.primary : theme.colorScheme.outlineVariant.withAlpha(100),
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        color: onlyLowStock ? theme.colorScheme.primary.withAlpha(15) : Colors.transparent,
+                      ),
+                      child: Row(
+                        children: [
+                          Radio<bool>(
+                            value: true,
+                            groupValue: onlyLowStock,
+                            onChanged: (val) {
+                              setStateDialog(() {
+                                onlyLowStock = val!;
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Solo bajo stock',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(statefulContext),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(statefulContext);
+                    
+                    // Show a loading indicator using parent context
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Row(
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(width: 16),
+                              Text('Generando documento...'),
+                            ],
+                          ),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
+
+                    final exportService = ExportService();
+                    if (isPdf) {
+                      await exportService.exportInventoryToPdf(
+                        items: items,
+                        categories: categories,
+                        onlyLowStock: onlyLowStock,
+                      );
+                    } else {
+                      await exportService.exportInventoryToCsv(
+                        items: items,
+                        categories: categories,
+                        onlyLowStock: onlyLowStock,
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Descargar'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isPdf ? Colors.redAccent.shade700 : Colors.green.shade700,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _handleEditItem(BuildContext context, InventoryItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddInventoryItemScreen(itemToEdit: item)),
+    );
+  }
+
+  void _confirmDeleteItem(BuildContext context, InventoryItem item) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text(
+                'Confirmar eliminación',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text('¿Deseas eliminar este material?\n\n"${item.name}"'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                final userName = auth.currentUser?.name ?? 'Admin';
+                
+                final inventory = Provider.of<InventoryProvider>(context, listen: false);
+                await inventory.deleteItem(item.id, userName);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"${item.name}" eliminado correctamente.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Eliminar', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 

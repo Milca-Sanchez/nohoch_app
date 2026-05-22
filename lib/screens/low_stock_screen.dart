@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../providers/inventory_provider.dart';
-import '../models/inventory_item.dart';
 import '../models/inventory_category.dart';
 import 'item_detail_screen.dart';
 
@@ -13,7 +12,6 @@ class LowStockScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inventory = Provider.of<InventoryProvider>(context);
-    final theme = Theme.of(context);
     final dateFormat = DateFormat('dd/MM/yyyy');
 
     final lowStockItems = inventory.items.where((i) => i.quantity <= 5).toList();

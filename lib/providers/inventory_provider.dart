@@ -2,21 +2,23 @@ import 'package:flutter/material.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_category.dart';
 import '../models/inventory_history.dart';
-import '../services/mock_database_service.dart';
+import '../services/database_service.dart'; // Cambio aquí
 import 'package:uuid/uuid.dart';
 
 class InventoryProvider with ChangeNotifier {
-  final MockDatabaseService _dbService;
+  final DatabaseService _dbService; // Cambio aquí
   List<InventoryItem> _items = [];
   List<InventoryCategory> _categories = [];
+  List<InventoryHistory> _history = [];
   bool _isLoading = false;
 
-  InventoryProvider(this._dbService) {
+  InventoryProvider(this._dbService) { // Constructor igual
     _loadData();
   }
 
   List<InventoryItem> get items => _items;
   List<InventoryCategory> get categories => _categories;
+  List<InventoryHistory> get history => _history;
   bool get isLoading => _isLoading;
 
   Future<void> _loadData() async {
@@ -25,6 +27,7 @@ class InventoryProvider with ChangeNotifier {
 
     _categories = await _dbService.getCategories();
     _items = await _dbService.getInventory();
+    _history = await _dbService.getInventoryHistory();
     
     _isLoading = false;
     notifyListeners();
@@ -68,7 +71,31 @@ class InventoryProvider with ChangeNotifier {
     await _loadData();
   }
 
-  Future<void> updateQuantity(String itemId, int newQuantity, String reason) async {
+  Future<void> deleteItem(String itemId, String userName) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final itemIndex = _items.indexWhere((i) => i.id == itemId);
+    if (itemIndex != -1) {
+      final item = _items[itemIndex];
+      await _dbService.deleteInventoryItem(itemId);
+
+      final history = InventoryHistory(
+        id: const Uuid().v4(),
+        itemId: itemId,
+        date: DateTime.now(),
+        action: '🗑 ${item.name} eliminada',
+        newQuantity: 0,
+        oldQuantity: item.quantity,
+        details: 'Material eliminado permanentemente del sistema por $userName.',
+      );
+      await _dbService.addHistoryRecord(history);
+    }
+
+    await _loadData();
+  }
+
+  Future<void> updateQuantity(String itemId, int newQuantity, String reason, String userName) async {
     _isLoading = true;
     notifyListeners();
 
@@ -82,12 +109,11 @@ class InventoryProvider with ChangeNotifier {
       
       await _dbService.updateInventoryItem(updatedItem);
 
-      // Registro de historial
       final history = InventoryHistory(
         id: const Uuid().v4(),
         itemId: itemId,
         date: DateTime.now(),
-        action: 'Cantidad actualizada',
+        action: 'Cantidad actualizada por $userName',
         oldQuantity: oldItem.quantity,
         newQuantity: newQuantity,
         details: reason,
@@ -99,5 +125,9 @@ class InventoryProvider with ChangeNotifier {
 
   Future<List<InventoryHistory>> getItemHistory(String itemId) async {
     return await _dbService.getHistoryForItem(itemId);
+  }
+
+  Future<List<InventoryHistory>> getInventoryHistory() async {
+    return _history;
   }
 }

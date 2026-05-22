@@ -21,6 +21,7 @@ class AddInventoryItemScreen extends StatefulWidget {
 class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
   final _formKey = GlobalKey<FormState>();
   
+  bool _isLoading = false;
   String _name = '';
   String? _categoryId;
   int _quantity = 1;
@@ -30,7 +31,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
   String _iconName = 'build';
   String? _imagePath;
 
-  final List<String> _statuses = ['Bueno', 'Regular', 'Dañado', 'En reparación'];
+  final List<String> _statuses = ['Bueno', 'Regular', 'Malo', 'Dañado', 'En reparación'];
   
   final Map<String, IconData> _availableIcons = {
     'build': Icons.build,
@@ -58,6 +59,11 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
       _location = item.location;
       _iconName = item.iconName;
       _imagePath = item.imagePath;
+      
+      // Si el estado no está en la lista de estados, lo agregamos para evitar error de DropdownButton
+      if (!_statuses.contains(_status)) {
+        _statuses.add(_status);
+      }
     }
   }
 
@@ -105,55 +111,73 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
     }
     _formKey.currentState!.save();
 
-    final inventory = Provider.of<InventoryProvider>(context, listen: false);
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    
-    // User name
-    final userName = auth.currentUser?.name ?? 'Administrador';
+    setState(() {
+      _isLoading = true;
+    });
 
-    if (widget.itemToEdit != null) {
-      final updatedItem = widget.itemToEdit!.copyWith(
-        name: _name,
-        categoryId: _categoryId!,
-        quantity: _quantity,
-        status: _status,
-        description: _description,
-        iconName: _iconName,
-        location: _location,
-        lastUpdateDate: DateTime.now(),
-        imagePath: _imagePath,
-      );
-
-      await inventory.updateItem(updatedItem, userName);
+    try {
+      final inventory = Provider.of<InventoryProvider>(context, listen: false);
+      final auth = Provider.of<AuthProvider>(context, listen: false);
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Artículo "$_name" actualizado correctamente')),
+      // User name
+      final userName = auth.currentUser?.name ?? 'Administrador';
+
+      if (widget.itemToEdit != null) {
+        final updatedItem = widget.itemToEdit!.copyWith(
+          name: _name,
+          categoryId: _categoryId!,
+          quantity: _quantity,
+          status: _status,
+          description: _description,
+          iconName: _iconName,
+          location: _location,
+          lastUpdateDate: DateTime.now(),
+          imagePath: _imagePath,
         );
-        Navigator.pop(context);
+
+        await inventory.updateItem(updatedItem, userName);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Artículo "$_name" actualizado correctamente')),
+          );
+          Navigator.pop(context);
+        }
+      } else {
+        final newItem = InventoryItem(
+          id: const Uuid().v4(),
+          name: _name,
+          categoryId: _categoryId!,
+          quantity: _quantity,
+          status: _status,
+          description: _description,
+          iconName: _iconName,
+          location: _location,
+          registrationDate: DateTime.now(),
+          lastUpdateDate: DateTime.now(),
+          imagePath: _imagePath,
+        );
+
+        await inventory.addItem(newItem, userName);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Artículo "$_name" guardado correctamente')),
+          );
+          Navigator.pop(context);
+        }
       }
-    } else {
-      final newItem = InventoryItem(
-        id: const Uuid().v4(),
-        name: _name,
-        categoryId: _categoryId!,
-        quantity: _quantity,
-        status: _status,
-        description: _description,
-        iconName: _iconName,
-        location: _location,
-        registrationDate: DateTime.now(),
-        lastUpdateDate: DateTime.now(),
-        imagePath: _imagePath,
-      );
-
-      await inventory.addItem(newItem, userName);
-      
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Artículo "$_name" guardado correctamente')),
+          SnackBar(content: Text('Error al guardar: $e')),
         );
-        Navigator.pop(context);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -259,7 +283,7 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.itemToEdit != null ? 'Editar Artículo' : 'Nuevo Artículo'),
+        title: Text(widget.itemToEdit != null ? 'Editar' : 'Agregar'),
         backgroundColor: theme.colorScheme.surface,
         elevation: 0,
       ),
@@ -270,16 +294,6 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title
-              Text(
-                widget.itemToEdit != null ? 'Modificar Material' : 'Registrar Material',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 24),
-
               // Image Section
               _buildImageSection(theme),
               const SizedBox(height: 24),
@@ -385,32 +399,6 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
                 ),
                 onSaved: (value) => _description = value?.trim() ?? '',
               ),
-              const SizedBox(height: 16),
-
-              // Icon Selector
-              DropdownButtonFormField<String>(
-                value: _iconName,
-                decoration: InputDecoration(
-                  labelText: 'Ícono Representativo',
-                  prefixIcon: Icon(_availableIcons[_iconName]),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: _availableIcons.entries.map((entry) {
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    child: Row(
-                      children: [
-                        Icon(entry.value, size: 20),
-                        const SizedBox(width: 12),
-                        Text(entry.key),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => _iconName = value);
-                },
-              ),
               const SizedBox(height: 32),
 
               // Submit
@@ -418,10 +406,21 @@ class _AddInventoryItemScreenState extends State<AddInventoryItemScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton.icon(
-                  onPressed: _saveItem,
-                  icon: const Icon(Icons.save),
+                  onPressed: _isLoading ? null : _saveItem,
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.save),
                   label: Text(
-                    widget.itemToEdit != null ? 'Guardar Cambios' : 'Guardar Artículo',
+                    _isLoading
+                        ? 'Guardando...'
+                        : (widget.itemToEdit != null ? 'Editar' : 'Agregar'),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(

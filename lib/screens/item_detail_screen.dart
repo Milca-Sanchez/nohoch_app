@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 import '../providers/inventory_provider.dart';
+import '../providers/auth_provider.dart';
 import '../models/inventory_item.dart';
 import '../models/inventory_category.dart';
 import '../models/inventory_history.dart';
@@ -38,7 +39,64 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     }
   }
 
-  Widget _buildProductImage(String? imagePath, InventoryCategory category) {
+  void _showFullImage(BuildContext context, String imagePath, String itemName, String itemId) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withAlpha(230),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(
+                itemName,
+                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            body: Center(
+              child: InteractiveViewer(
+                panEnabled: true,
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Hero(
+                  tag: 'item-image-$itemId',
+                  child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
+                      ? Image.network(
+                          imagePath,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return const Center(child: CircularProgressIndicator(color: Colors.white));
+                          },
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
+                          ),
+                        )
+                      : Image.file(
+                          File(imagePath),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => const Center(
+                            child: Icon(Icons.broken_image, size: 80, color: Colors.white54),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildProductImage(BuildContext context, InventoryItem item, InventoryCategory category) {
+    final imagePath = item.imagePath;
     if (imagePath == null || imagePath.isEmpty) {
       return Container(
         width: 100,
@@ -66,43 +124,49 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       );
     }
 
-    return Container(
-      width: 100,
-      height: 100,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: category.color.withAlpha(80),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(20),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
-          ? Image.network(
-              imagePath,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey[200],
-                alignment: Alignment.center,
-                child: const Icon(Icons.broken_image, size: 40),
-              ),
-            )
-          : Image.file(
-              File(imagePath),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey[200],
-                alignment: Alignment.center,
-                child: const Icon(Icons.broken_image, size: 40),
-              ),
+    return GestureDetector(
+      onTap: () => _showFullImage(context, imagePath, item.name, item.id),
+      child: Hero(
+        tag: 'item-image-${item.id}',
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: category.color.withAlpha(80),
+              width: 1.5,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(20),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: kIsWeb || imagePath.startsWith('http') || imagePath.startsWith('blob:')
+              ? Image.network(
+                  imagePath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey[200],
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.broken_image, size: 40),
+                  ),
+                )
+              : Image.file(
+                  File(imagePath),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: Colors.grey[200],
+                    alignment: Alignment.center,
+                    child: const Icon(Icons.broken_image, size: 40),
+                  ),
+                ),
+        ),
+      ),
     );
   }
 
@@ -128,17 +192,61 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       appBar: AppBar(
         title: const Text('Detalle del Material'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_note_outlined, size: 28),
-            tooltip: 'Editar Artículo',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddInventoryItemScreen(itemToEdit: item),
-                ),
-              );
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            tooltip: 'Opciones',
+            elevation: 4,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            color: theme.brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
+            onSelected: (value) {
+              if (value == 'edit') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddInventoryItemScreen(itemToEdit: item),
+                  ),
+                );
+              } else if (value == 'delete') {
+                _confirmDeleteItem(context, item);
+              }
             },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'edit',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Editar',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(height: 1),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Eliminar',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(width: 8),
         ],
@@ -151,7 +259,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
             // Cabecera
             Row(
               children: [
-                _buildProductImage(item.imagePath, category),
+                _buildProductImage(context, item, category),
                 const SizedBox(width: 24),
                 Expanded(
                   child: Column(
@@ -277,6 +385,9 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   void _showUpdateQuantityDialog(BuildContext context, InventoryItem item) {
     final provider = Provider.of<InventoryProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final userName = auth.currentUser?.name ?? 'Administrador';
+    
     final controller = TextEditingController(text: item.quantity.toString());
     final reasonController = TextEditingController();
 
@@ -308,9 +419,15 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
             onPressed: () async {
               final newQuantity = int.tryParse(controller.text);
               if (newQuantity != null) {
-                await provider.updateQuantity(item.id, newQuantity, reasonController.text.isEmpty ? 'Ajuste manual' : reasonController.text);
+                final navigator = Navigator.of(context);
+                await provider.updateQuantity(
+                  item.id,
+                  newQuantity,
+                  reasonController.text.isEmpty ? 'Ajuste manual' : reasonController.text,
+                  userName,
+                );
                 if (mounted) {
-                  Navigator.pop(context);
+                  navigator.pop();
                 }
               }
             },
@@ -318,6 +435,67 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _confirmDeleteItem(BuildContext context, InventoryItem item) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        final theme = Theme.of(dialogContext);
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+              SizedBox(width: 8),
+              Text(
+                'Confirmar eliminación',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          content: Text('¿Deseas eliminar este material?\n\n"${item.name}"'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
+                
+                final auth = Provider.of<AuthProvider>(context, listen: false);
+                final userName = auth.currentUser?.name ?? 'Admin';
+                
+                final inventory = Provider.of<InventoryProvider>(context, listen: false);
+                await inventory.deleteItem(item.id, userName);
+
+                if (context.mounted) {
+                  Navigator.pop(context); // Volver al listado del inventario
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('"${item.name}" eliminado correctamente.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Eliminar', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

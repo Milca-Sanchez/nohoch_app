@@ -1,27 +1,37 @@
 import '../models/app_user.dart';
+import 'auth_service.dart';
 
-class MockAuthService {
-  Future<AppUser?> login(String email, String password) async {
-    // Simulamos un retraso de red
+class MockAuthService implements AuthService {
+  @override
+  Future<AppUser?> login(String username, String password) async {
     await Future.delayed(const Duration(seconds: 1));
 
-    if (password != '123456') {
-      throw Exception('Contraseña incorrecta. (Usa 123456)');
+    // Credenciales de prueba para desarrollo local
+    if (username == 'admin' && password == 'contra1234') {
+      return AppUser(
+        id: '1',
+        email: username,
+        name: 'Administrador Principal',
+        role: UserRole.administrador,
+      );
+    } else if (username == 'tesorero' && password == 'contra1234') {
+      return AppUser(
+        id: '2',
+        email: username,
+        name: 'Tesorero General',
+        role: UserRole.tesorero,
+      );
+    } else if (username == 'materiales' && password == 'contra1234') {
+      return AppUser(
+        id: '3',
+        email: username,
+        name: 'Gestor de Materiales',
+        role: UserRole.materiales,
+      );
     }
-
-    switch (email.toLowerCase().trim()) {
-      case 'admin@nohoch.com':
-        return AppUser(id: '1', email: email, name: 'Administrador Principal', role: UserRole.administrador);
-      case 'tesorero@nohoch.com':
-        return AppUser(id: '2', email: email, name: 'Tesorero General', role: UserRole.tesorero);
-      case 'materiales@nohoch.com':
-        return AppUser(id: '3', email: email, name: 'Gestor de Materiales', role: UserRole.materiales);
-      default:
-        throw Exception('Usuario no encontrado. (Prueba admin@..., tesorero@..., materiales@... con dominio nohoch.com)');
-    }
+    throw Exception('Usuario o contraseña incorrectos');
   }
 
-  Future<void> logout() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-  }
+  @override
+  Future<void> logout() async {}
 }

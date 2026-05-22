@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# Ignorar archivo de autenticación mock local
+lib/services/mock_auth_service.dart
